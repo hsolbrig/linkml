@@ -781,7 +781,15 @@ dataclasses._init_fn = dataclasses_init_fn_with_kwargs
             slot.name
         )  # Mangled name by which the slot is known in python
         range_type, base_type, base_type_name = self.class_reference_type(slot, cls)
-        slot_identifier = self.class_identifier(slot.range)
+        # Address the case of key/value tuple.  This doesn't cover everything, but catches the vast majority of the
+        # cases
+        if slot.identifier and len(cls.slots) == 2:
+            aliased_data_name = self.slot_name(cls.slots[1])
+            rlines.append(f"if self.{aliased_slot_name} is None and len(kwargs) == 1:")
+            rlines.append("\tfor k in kwargs:")
+            rlines.append(f"\t\tself.{aliased_slot_name} = k")
+            rlines.append(f"\t\tself.{aliased_data_name} = kwargs[k]")
+            rlines.append("\t\tkwargs = {}")
 
         # Generate existence check for required slots.  Note that inherited classes have to do post init checks because
         # You can't have required elements after optional elements in the parent class
@@ -819,7 +827,7 @@ dataclasses._init_fn = dataclasses_init_fn_with_kwargs
                     )
                 else:
                     rlines.append(
-                        f"\tself.{aliased_slot_name} = {base_type_name}(**as_dict(self.{aliased_slot_name}))"
+                         f"\tself.{aliased_slot_name} = self._normalize_assignment(self.{aliased_slot_name}, {base_type_name})"
                     )
         elif slot.inlined:
             slot_range_cls = self.schema.classes[slot.range]
@@ -839,6 +847,11 @@ dataclasses._init_fn = dataclasses_init_fn_with_kwargs
                 # Place for future expansion
                 keyed = True
             if identifier:
+                rlines.extend([
+                    f"if not self.{aliased_slot_name} and kwargs:",
+                    f"\tself.{aliased_slot_name} = kwargs",
+                    f"\tkwargs = {{}}"
+                ])
                 if not slot.inlined_as_list:
                     rlines.append(
                         f'self._normalize_inlined_as_dict(slot_name="{aliased_slot_name}", '
@@ -860,7 +873,7 @@ dataclasses._init_fn = dataclasses_init_fn_with_kwargs
                 rlines.append(f"if not isinstance({sn}, list):")
                 rlines.append(f"\t{sn} = [{sn}] if {sn} is not None else []")
                 rlines.append(
-                    f"{sn} = [v if isinstance(v, {base_type_name}) else {base_type_name}(**as_dict(v)) for v in {sn}]"
+                    f"{sn} = [v if isinstance(v, {base_type_name}) else self._normalize_assignment(v, {base_type_name}) for v in {sn}]"
                 )
         else:
             # Multivalued and not inlined
