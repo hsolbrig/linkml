@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "Linked Open Data Modeling Language"
 authors = [
     "Chris Mungall <cjmungall@lbl.gov>",
-    "Harold Solbrig <solbrig@jhu.edu>",
+    "Harold Solbrig <informatics@solbrigs.us>",
     "Sujay Patil <spatil@lbl.gov>",
     "Harshad Hegde <hhegde@lbl.gov>",
     "Sierra Moxon <smoxon@lbl.gov>",
@@ -74,6 +74,7 @@ gen-typescript = "linkml.generators.typescriptgen:cli"
 gen-terminusdb = "linkml.generators.terminusdbgen:cli"
 gen-yuml = "linkml.generators.yumlgen:cli"
 gen-yaml = "linkml.generators.yamlgen:cli"
+gen-erdiagram = "linkml.generators.erdiagramgen:cli"
 gen-sqla = "linkml.generators.sqlalchemygen:cli"
 gen-sqlddl = "linkml.generators.sqltablegen:cli"
 gen-sqlddl-legacy = "linkml.generators.sqlddlgen:cli"
@@ -81,7 +82,6 @@ gen-sqltables = "linkml.generators.sqltablegen:cli"
 gen-summary = "linkml.generators.summarygen:cli"
 gen-project = "linkml.generators.projectgen:cli"
 run-tutorial = "linkml.utils.execute_tutorial:cli"
-linkml-ws = "linkml.workspaces.cli:main"
 linkml-convert = "linkml.utils.converter:cli"
 linkml-lint = "linkml.linter.cli:main"
 linkml-sqldb = "linkml.utils.sqlutils:main"

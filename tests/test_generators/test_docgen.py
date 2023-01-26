@@ -18,6 +18,8 @@ MD_DIR = env.expected_path("kitchen_sink_md")
 META_MD_DIR = env.expected_path("meta_md")
 MD_DIR2 = env.expected_path("kitchen_sink_md2")
 HTML_DIR = env.expected_path("kitchen_sink_html")
+EXAMPLE_DIR = env.input_path("examples")
+
 
 
 def assert_mdfile_does_not_contain(*args, **kwargs) -> None:
@@ -79,7 +81,9 @@ class DocGeneratorTestCase(unittest.TestCase):
 
     def test_docgen(self):
         """Tests basic document generator functionality"""
-        gen = DocGenerator(SCHEMA, mergeimports=True, no_types_dir=True)
+        gen = DocGenerator(SCHEMA, mergeimports=True, no_types_dir=True, example_directory=EXAMPLE_DIR)
+        blobs = gen.example_object_blobs("Person")
+        self.assertGreater(len(blobs), 0)
         md = gen.serialize(directory=MD_DIR)
         # test class docs
         assert_mdfile_contains("Organization.md", "Organization", after="Inheritance")
@@ -267,6 +271,37 @@ class DocGeneratorTestCase(unittest.TestCase):
                         "### Schema Source", 
                         "## LinkML Source"],
         )
+        # test slot usage overrides. See https://github.com/linkml/linkml/issues/1208
+        assert_mdfile_contains(
+            "FamilialRelationship.md",
+            ("| [started_at_time](started_at_time.md) | "
+             "0..1 <br/> [xsd:date](http://www.w3.org/2001/XMLSchema#date) |  | "
+             "[Relationship](Relationship.md) |"),
+            after="## Slots",
+        )
+        assert_mdfile_contains(
+            "FamilialRelationship.md",
+            ("| [related_to](related_to.md) | 1..1 <br/> [Person](Person.md) |  | "
+             "[Relationship](Relationship.md) |"),
+            after="## Slots",
+        )
+        # test inheritance column
+        assert_mdfile_contains(
+            "Person.md",
+            "| [id](id.md) | 1..1 <br/> [xsd:string](http://www.w3.org/2001/XMLSchema#string) |  | direct |",
+            after="## Slots",
+        )
+        assert_mdfile_contains(
+            "Person.md",
+            ("| [aliases](aliases.md) | 0..* <br/> [xsd:string](http://www.w3.org/2001/XMLSchema#string) "
+             "|  | [HasAliases](HasAliases.md) |"),
+            after="## Slots",
+        )
+        # Examples
+        assert_mdfile_contains(
+            "Person.md",
+            "Example: Person",
+            after="## Examples",)
 
     def test_docgen_rank_ordering(self):
         """Tests overriding default order"""
@@ -436,14 +471,14 @@ class DocGeneratorTestCase(unittest.TestCase):
         cls = sv.get_class("Address")
 
         # test assertion for own attributes of a class
-        actual_result = gen.get_direct_slots(cls)
+        actual_result = gen.get_direct_slot_names(cls)
         expected_result = ["street", "city"]
 
         self.assertListEqual(expected_result, actual_result)
 
         # test assertion for inherited attributes of a class
         cls = sv.get_class("EmploymentEvent")
-        actual_result = gen.get_indirect_slots(cls)
+        actual_result = [s.name for s in gen.get_indirect_slots(cls)]
         expected_result = ["ended at time", "metadata", "started at time", "is current"]
         
         self.assertCountEqual(expected_result, actual_result)
@@ -454,6 +489,10 @@ class DocGeneratorTestCase(unittest.TestCase):
         expected_result = {"HasAliases": ["aliases"]}
 
         self.assertDictEqual(actual_result, expected_result)
+
+        cls = sv.get_class("Person")
+        self.assertIn("id", gen.get_direct_slot_names(cls))
+        self.assertNotIn("aliases", gen.get_direct_slot_names(cls))
 
     def test_class_slots_inheritance(self):
         gen = DocGenerator(SCHEMA, mergeimports=True, no_types_dir=True)
